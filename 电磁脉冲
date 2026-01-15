@@ -1,0 +1,199 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+if not RunService:IsClient() then
+    warn("能量脉冲特效仅客户端生效")
+end
+
+-- 🔥 能量脉冲配色方案
+local EnergyPulsePalette = {
+    -- 主要颜色
+    DeepSpaceBlue = Color3.fromRGB(0, 20, 255),      -- 深空蓝 #0014FF
+    ElectricPurple = Color3.fromRGB(148, 0, 211),    -- 电离紫 #9400D3
+    LaserCyan = Color3.fromRGB(0, 255, 255),         -- 镭射青 #00FFFF
+    WhiteHot = Color3.fromRGB(255, 255, 240),        -- 白炽 #FFFFF0
+    PlasmaGold = Color3.fromRGB(255, 215, 0),        -- 等离子金 #FFD700
+    BlazingOrange = Color3.fromRGB(255, 140, 0),     -- 灼热橙 #FF8C00
+    
+    -- 渐变预设
+    BluePurplePulse = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 20, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(148, 0, 211)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 20, 255))
+    }),
+    
+    CyanWhiteBurst = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 255, 240)),
+        ColorSequenceKeypoint.new(0.7, Color3.fromRGB(255, 255, 240)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
+    }),
+    
+    GoldOrangeEnergy = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 215, 0))
+    }),
+    
+    TriplePulse = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 20, 255)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(148, 0, 211)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 20, 255))
+    })
+}
+
+-- ⚡ 脉冲效果函数
+local function applyEnergyPulseEffect(effect)
+    pcall(function()
+        if effect:IsA("ParticleEmitter") then
+            -- 随机选择脉冲方案
+            local schemes = {
+                EnergyPulsePalette.BluePurplePulse,
+                EnergyPulsePalette.CyanWhiteBurst,
+                EnergyPulsePalette.GoldOrangeEnergy,
+                EnergyPulsePalette.TriplePulse
+            }
+            effect.Color = schemes[math.random(1, #schemes)]
+            
+            -- 增强能量效果
+            effect.LightEmission = math.clamp(effect.LightEmission or 0.3, 0.5, 1)
+            effect.LightInfluence = 0
+            effect.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.8),
+                NumberSequenceKeypoint.new(0.5, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 1.5),
+                NumberSequenceKeypoint.new(1, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.8)
+            })
+            
+        elseif effect:IsA("Beam") then
+            -- 光束能量脉冲
+            effect.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, EnergyPulsePalette.DeepSpaceBlue),
+                ColorSequenceKeypoint.new(0.3, EnergyPulsePalette.ElectricPurple),
+                ColorSequenceKeypoint.new(0.6, EnergyPulsePalette.LaserCyan),
+                ColorSequenceKeypoint.new(1, EnergyPulsePalette.DeepSpaceBlue)
+            })
+            effect.Width0 = (effect.Width0 or 0.5) * 1.2
+            effect.Width1 = (effect.Width1 or 0.5) * 1.2
+            
+        elseif effect:IsA("Trail") then
+            effect.Color = EnergyPulsePalette.CyanWhiteBurst
+            effect.LightEmission = 1
+            
+        elseif effect:IsA("Smoke") then
+            effect.Color = Color3.fromRGB(100, 200, 255) -- 能量烟雾蓝
+            effect.Opacity = 0.4
+            effect.RiseVelocity = (effect.RiseVelocity or 1) * 1.5
+            
+        elseif effect:IsA("Fire") then
+            -- 能量火焰
+            effect.Color = EnergyPulsePalette.GoldOrangeEnergy
+            effect.Size = (effect.Size or 5) * 1.5
+            effect.Heat = (effect.Heat or 10) * 1.2
+            
+        elseif effect:IsA("Sparkles") then
+            effect.SparkleColor = EnergyPulsePalette.LaserCyan
+            effect.SparkleSize = (effect.SparkleSize or 1) * 1.3
+            
+        elseif effect:IsA("Explosion") then
+            effect.BlastPressure = (effect.BlastPressure or 500) * 0.8
+            effect.BlastRadius = (effect.BlastRadius or 5) * 1.2
+            -- Explosion颜色需通过ParticleEmitter实现
+        end
+        
+        -- 添加能量脉冲标记
+        effect:SetAttribute("EnergyPulse", true)
+        effect:SetAttribute("PulseIntensity", math.random(80, 100) / 100)
+        
+        -- 可选：添加脉冲动画（通过RunService）
+        if effect:IsA("ParticleEmitter") or effect:IsA("Beam") then
+            effect:SetAttribute("PulseEnabled", true)
+        end
+    end)
+end
+
+-- 🌌 应用所有特效
+local function dyeAllEnergyPulse()
+    print("⚡ 开始应用能量脉冲特效...")
+    local effectTypes = {"ParticleEmitter", "Beam", "Trail", "Smoke", "Fire", "Sparkles", "Explosion"}
+    local totalEffects = 0
+    local dyedEffects = 0
+    
+    for _, descendant in ipairs(game:GetDescendants()) do
+        for _, effectType in ipairs(effectTypes) do
+            if descendant:IsA(effectType) then
+                totalEffects = totalEffects + 1
+                if not descendant:GetAttribute("EnergyPulse") then
+                    applyEnergyPulseEffect(descendant)
+                    dyedEffects = dyedEffects + 1
+                end
+            end
+        end
+    end
+    
+    print(string.format("✅ 能量脉冲应用完成！总计 %d 个特效，新增 %d 个脉冲效果", totalEffects, dyedEffects))
+    
+    -- 全局访问接口
+    _G.EnergyPulseEffects = {
+        Reapply = dyeAllEnergyPulse,
+        Palette = EnergyPulsePalette,
+        DyeFunction = applyEnergyPulseEffect,
+        Pulse = function(intensity)
+            -- 控制脉冲强度
+            for _, effect in ipairs(game:GetDescendants()) do
+                if effect:GetAttribute("EnergyPulse") then
+                    effect:SetAttribute("PulseIntensity", intensity or 1)
+                end
+            end
+        end
+    }
+    
+    return dyedEffects
+end
+
+-- 🚀 初始执行
+dyeAllEnergyPulse()
+
+print("⚡ 能量脉冲系统已激活")
+print("💫 深空蓝 + 电离紫 + 镭射青")
+print("🔥 等离子金 + 灼热橙 脉冲效果")
+
+-- 🔄 监听新特效
+game.DescendantAdded:Connect(function(newDescendant)
+    task.wait(0.05)
+    local effectTypes = {"ParticleEmitter", "Beam", "Trail", "Smoke", "Fire", "Sparkles", "Explosion"}
+    for _, effectType in ipairs(effectTypes) do
+        if newDescendant:IsA(effectType) then
+            task.wait(0.1)
+            if not newDescendant:GetAttribute("EnergyPulse") then
+                applyEnergyPulseEffect(newDescendant)
+                print("✨ 新能量脉冲效果:", newDescendant:GetFullName())
+            end
+        end
+    end
+end)
+
+-- ⚡ 全局脉冲控制函数
+function PulseAllEffects(intensity)
+    intensity = intensity or 1
+    for _, effect in ipairs(game:GetDescendants()) do
+        if effect:GetAttribute("EnergyPulse") and effect:IsA("ParticleEmitter") then
+            local currentSize = effect.Size
+            if currentSize then
+                effect.Size = NumberSequence.new({
+                    NumberSequenceKeypoint.new(0, currentSize.Keypoints[1].Value * intensity),
+                    NumberSequenceKeypoint.new(0.5, currentSize.Keypoints[2].Value * intensity * 1.5),
+                    NumberSequenceKeypoint.new(1, currentSize.Keypoints[3].Value * intensity)
+                })
+            end
+        end
+    end
+    print("⚡ 全局脉冲强度:", intensity)
+end
+
+-- 导出控制函数
+return {
+    Apply = dyeAllEnergyPulse,
+    Pulse = PulseAllEffects,
+    Colors = EnergyPulsePalette
+}
