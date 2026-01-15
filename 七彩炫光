@@ -1,0 +1,268 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+if not RunService:IsClient() then
+    warn("暗黑炫光特效仅客户端生效")
+end
+
+-- 🌑 暗黑炫光配色方案
+local DarkGlowPalette = {
+    -- 核心暗色
+    AbyssBlack = Color3.fromRGB(5, 5, 15),           -- 深渊黑 #05050F
+    VoidNavy = Color3.fromRGB(10, 10, 40),           -- 虚空海军 #0A0A28
+    ShadowPurple = Color3.fromRGB(25, 0, 50),        -- 暗影紫 #190032
+    
+    -- 炫光高亮
+    GhostPurple = Color3.fromRGB(75, 0, 130),        -- 幽魂紫 #4B0082
+    BloodMoonRed = Color3.fromRGB(220, 20, 60),      -- 血月红 #DC143C
+    VoidGreen = Color3.fromRGB(50, 205, 50),         -- 虚空绿 #32CD32
+    DarkGold = Color3.fromRGB(184, 134, 11),         -- 暗金 #B8860B
+    
+    -- 能量核心
+    CoreCyan = Color3.fromRGB(0, 255, 255),          -- 核心青
+    CoreMagenta = Color3.fromRGB(255, 0, 255),       -- 核心品红
+    
+    -- 渐变预设
+    PurpleRedFlare = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(75, 0, 130)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(139, 0, 139)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(220, 20, 60)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(75, 0, 130))
+    }),
+    
+    AbyssGreenGlow = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 5, 15)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(0, 100, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 205, 50)),
+        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 100, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(5, 5, 15))
+    }),
+    
+    VoidGoldEnergy = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 40)),
+        ColorSequenceKeypoint.new(0.4, Color3.fromRGB(184, 134, 11)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(218, 165, 32)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 40))
+    }),
+    
+    CoreGlitch = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.25, Color3.fromRGB(75, 0, 130)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 0, 255)),
+        ColorSequenceKeypoint.new(0.75, Color3.fromRGB(220, 20, 60)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
+    })
+}
+
+-- 💀 暗黑效果函数
+local function applyDarkGlowEffect(effect)
+    pcall(function()
+        local effectType = effect.ClassName
+        
+        if effect:IsA("ParticleEmitter") then
+            -- 根据效果类型选择方案
+            local scheme
+            local particleName = effect.Name:lower()
+            
+            if string.find(particleName, "fire") or string.find(particleName, "flame") then
+                scheme = DarkGlowPalette.PurpleRedFlare  -- 火焰用紫红
+                effect.Rate = (effect.Rate or 20) * 1.2
+                effect.Lifetime = NumberRange.new(0.8, 1.5)
+            elseif string.find(particleName, "smoke") or string.find(particleName, "fog") then
+                effect.Color = ColorSequence.new(DarkGlowPalette.VoidNavy)
+                effect.Transparency = NumberSequence.new(0.6, 0.9)
+                return
+            elseif string.find(particleName, "magic") or string.find(particleName, "spell") then
+                scheme = DarkGlowPalette.CoreGlitch  -- 魔法用故障色
+            else
+                -- 随机选择暗黑方案
+                local schemes = {
+                    DarkGlowPalette.PurpleRedFlare,
+                    DarkGlowPalette.AbyssGreenGlow,
+                    DarkGlowPalette.VoidGoldEnergy
+                }
+                scheme = schemes[math.random(1, #schemes)]
+            end
+            
+            effect.Color = scheme
+            effect.LightEmission = math.clamp(effect.LightEmission or 0.3, 0.6, 0.9)
+            effect.LightInfluence = 0
+            
+            -- 添加脉动效果
+            effect.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.7),
+                NumberSequenceKeypoint.new(0.5, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 1.8),
+                NumberSequenceKeypoint.new(1, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.7)
+            })
+            
+            -- 速度变化制造不稳定感
+            effect.Speed = NumberRange.new(
+                (effect.Speed and effect.Speed.Min or 2) * 0.8,
+                (effect.Speed and effect.Speed.Max or 5) * 1.2
+            )
+            
+        elseif effect:IsA("Beam") then
+            -- 光束效果：黑色外圈 + 彩色核心
+            effect.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, DarkGlowPalette.AbyssBlack),
+                ColorSequenceKeypoint.new(0.1, DarkGlowPalette.GhostPurple),
+                ColorSequenceKeypoint.new(0.5, DarkGlowPalette.BloodMoonRed),
+                ColorSequenceKeypoint.new(0.9, DarkGlowPalette.GhostPurple),
+                ColorSequenceKeypoint.new(1, DarkGlowPalette.AbyssBlack)
+            })
+            effect.Width0 = (effect.Width0 or 0.5)
+            effect.Width1 = (effect.Width1 or 0.5)
+            effect.Texture = "rbxassetid://446111271"  -- 闪电纹理
+            effect.TextureSpeed = 2
+            effect.LightEmission = 0.8
+            
+        elseif effect:IsA("Trail") then
+            effect.Color = DarkGlowPalette.PurpleRedFlare
+            effect.LightEmission = 0.7
+            effect.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.3),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+            
+        elseif effect:IsA("Smoke") then
+            effect.Color = Color3.fromRGB(30, 0, 50)  -- 深紫色烟雾
+            effect.Opacity = 0.3
+            effect.RiseVelocity = (effect.RiseVelocity or 1) * 0.7
+            effect.Size = (effect.Size or 4) * 1.3
+            
+        elseif effect:IsA("Fire") then
+            effect.Color = DarkGlowPalette.PurpleRedFlare
+            effect.Size = (effect.Size or 5) * 1.4
+            effect.Heat = (effect.Heat or 10) * 0.8  -- 降低热量，更暗
+            effect.SecondaryColor = DarkGlowPalette.AbyssBlack
+            
+        elseif effect:IsA("Sparkles") then
+            effect.SparkleColor = DarkGlowPalette.VoidGreen
+            effect.SparkleSize = (effect.SparkleSize or 1) * 1.5
+            effect.TimeScale = 0.8  -- 减慢闪烁
+            
+        elseif effect:IsA("Explosion") then
+            effect.BlastPressure = (effect.BlastPressure or 500) * 1.1
+            effect.DestroyJointRadiusPercent = 0
+        end
+        
+        -- 添加暗黑标记
+        effect:SetAttribute("DarkGlow", true)
+        effect:SetAttribute("GlowType", effectType)
+        effect:SetAttribute("Intensity", math.random(70, 95) / 100)
+        
+        -- 如果是发光特效，增强对比度
+        if effect:IsA("ParticleEmitter") and effect.LightEmission > 0.5 then
+            effect:SetAttribute("HighContrast", true)
+        end
+    end)
+end
+
+-- 🌙 应用所有暗黑特效
+local function applyAllDarkGlow()
+    print("🌑 开始应用暗黑炫光特效...")
+    local effectTypes = {"ParticleEmitter", "Beam", "Trail", "Smoke", "Fire", "Sparkles", "Explosion", "Light"}
+    local totalEffects = 0
+    local darkEffects = 0
+    
+    for _, descendant in ipairs(game:GetDescendants()) do
+        for _, effectType in ipairs(effectTypes) do
+            if descendant:IsA(effectType) then
+                totalEffects = totalEffects + 1
+                if not descendant:GetAttribute("DarkGlow") then
+                    applyDarkGlowEffect(descendant)
+                    darkEffects = darkEffects + 1
+                end
+            end
+        end
+    end
+    
+    print(string.format("☠️ 暗黑炫光应用完成！总计 %d 个特效，转化 %d 个暗黑效果", totalEffects, darkEffects))
+    
+    -- 全局控制接口
+    _G.DarkGlowSystem = {
+        Reapply = applyAllDarkGlow,
+        Darken = function(intensity)
+            -- 进一步暗化效果
+            for _, effect in ipairs(game:GetDescendants()) do
+                if effect:GetAttribute("DarkGlow") then
+                    local current = effect:GetAttribute("Intensity") or 1
+                    effect:SetAttribute("Intensity", math.clamp(current * (intensity or 0.8), 0.1, 1))
+                end
+            end
+        end,
+        GlitchMode = function(enabled)
+            -- 开启故障效果
+            for _, effect in ipairs(game:GetDescendants()) do
+                if effect:GetAttribute("DarkGlow") and effect:IsA("ParticleEmitter") then
+                    if enabled then
+                        effect.Color = DarkGlowPalette.CoreGlitch
+                        effect.Acceleration = Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+                    else
+                        applyDarkGlowEffect(effect)  -- 恢复
+                    end
+                end
+            end
+        end
+    }
+    
+    return darkEffects
+end
+
+-- 🕯️ 初始执行
+applyAllDarkGlow()
+
+print("🌑 暗黑炫光系统已激活")
+print("💀 幽魂紫 + 血月红 + 深渊绿")
+print("👁️ 建议配合暗色环境光使用")
+
+-- 🔄 监听新特效
+game.DescendantAdded:Connect(function(newDescendant)
+    task.wait(0.1)
+    local effectTypes = {"ParticleEmitter", "Beam", "Trail", "Smoke", "Fire", "Sparkles", "Explosion", "Light"}
+    for _, effectType in ipairs(effectTypes) do
+        if newDescendant:IsA(effectType) then
+            task.wait(0.15)
+            if not newDescendant:GetAttribute("DarkGlow") then
+                applyDarkGlowEffect(newDescendant)
+                print("🕯️ 新增暗黑效果:", newDescendant:GetFullName())
+            end
+        end
+    end
+end)
+
+-- 🌌 环境光适配（可选）
+local function setupDarkEnvironment()
+    if game:GetService("Lighting") then
+        local lighting = game:GetService("Lighting")
+        lighting.Ambient = Color3.fromRGB(20, 10, 30)
+        lighting.OutdoorAmbient = Color3.fromRGB(30, 15, 40)
+        lighting.Brightness = 1.2
+        lighting.ColorShift_Bottom = Color3.fromRGB(40, 0, 60)
+        lighting.ColorShift_Top = Color3.fromRGB(60, 0, 90)
+    end
+end
+
+-- ⚡ 特效脉冲控制
+function PulseDarkEffects(pulseStrength)
+    pulseStrength = pulseStrength or 1.3
+    for _, effect in ipairs(game:GetDescendants()) do
+        if effect:GetAttribute("DarkGlow") then
+            if effect:IsA("ParticleEmitter") then
+                local currentSize = effect.Size
+                if currentSize and #currentSize.Keypoints >= 2 then
+                    effect.Size = NumberSequence.new({
+                        NumberSequenceKeypoint.new(0, currentSize.Keypoints[1].Value),
+                        NumberSequenceKeypoint.new(0.5, currentSize.Keypoints[2].Value * pulseStrength),
+                        NumberSequenceKeypoint.new(1, currentSize.Keypoints[3].Value)
+                    })
+                end
+            elseif effect:IsA("Beam") then
+                effect.Width0 = (effect.Width0 or 0.5) * pulseStrength
+                effect.Width1 = (effect.Width1 or 0.5) * pulseStrength
+            end
+        end
+    end
+    print("💀 暗黑脉冲强度:", pulseStrength)
+end
+
