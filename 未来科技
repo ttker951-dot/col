@@ -1,0 +1,399 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+if not RunService:IsClient() then
+    warn("未来科技特效仅客户端生效")
+end
+
+-- 🌐 未来科技配色方案
+local FutureTechPalette = {
+    -- 核心科技色
+    HologramBlue = Color3.fromRGB(0, 255, 255),      -- 全息蓝 #00FFFF
+    MatrixGreen = Color3.fromRGB(0, 255, 0),         -- 矩阵绿 #00FF00
+    DataStreamWhite = Color3.fromRGB(240, 255, 255), -- 数据流白 #F0FFFF
+    
+    -- 高级金属
+    Nanosilver = Color3.fromRGB(192, 192, 192),      -- 纳米银 #C0C0C0
+    CircuitGold = Color3.fromRGB(255, 215, 0),       -- 电路金 #FFD700
+    EnergyBlue = Color3.fromRGB(30, 144, 255),       -- 能量蓝 #1E90FF
+    
+    -- 光子色
+    PhotonCore = Color3.fromRGB(255, 255, 255),      -- 光子核心白
+    PhotonEdgeBlue = Color3.fromRGB(135, 206, 250),  -- 光子边缘天蓝
+    PhotonHaloPurple = Color3.fromRGB(138, 43, 226), -- 光子光晕紫
+    
+    -- 界面色
+    InterfaceCyan = Color3.fromRGB(0, 191, 255),     -- 界面青 #00BFFF
+    GridLine = Color3.fromRGB(50, 205, 50),          -- 网格线 #32CD32
+    WarningOrange = Color3.fromRGB(255, 140, 0),     -- 警告橙 #FF8C00
+    
+    -- 渐变预设
+    HologramPulse = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(240, 255, 255)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 255))
+    }),
+    
+    MatrixFlow = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 50, 0)),
+        ColorSequenceKeypoint.new(0.2, Color3.fromRGB(0, 150, 0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.8, Color3.fromRGB(0, 150, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 50, 0))
+    }),
+    
+    NanotechGlow = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(192, 192, 192)),
+        ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 255, 220)),
+        ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255, 215, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(192, 192, 192))
+    }),
+    
+    PhotonBeam = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(135, 206, 250)),
+        ColorSequenceKeypoint.new(0.1, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.9, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(135, 206, 250))
+    }),
+    
+    DataRain = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 191, 255)),
+        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
+        ColorSequenceKeypoint.new(0.66, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 191, 255))
+    }),
+    
+    CircuitSpark = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 144, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 215, 0)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 144, 255))
+    })
+}
+
+-- 🔬 科技效果增强函数
+local function enhanceTechEffect(effect)
+    pcall(function()
+        -- 存储原始属性（用于恢复）
+        if not effect:GetAttribute("OriginalColor") and effect.Color then
+            effect:SetAttribute("OriginalColor", effect.Color)
+        end
+        
+        local effectName = effect.Name:lower()
+        local isWeapon = string.find(effectName, "gun") or string.find(effectName, "laser") or string.find(effectName, "weapon")
+        local isUI = string.find(effectName, "ui") or string.find(effectName, "hud") or string.find(effectName, "interface")
+        local isEnergy = string.find(effectName, "energy") or string.find(effectName, "power") or string.find(effectName, "core")
+        
+        if effect:IsA("ParticleEmitter") then
+            -- 选择科技方案
+            local scheme
+            if isWeapon then
+                scheme = FutureTechPalette.PhotonBeam
+                effect.LightEmission = 1
+                effect.LightInfluence = 0
+                effect.Acceleration = Vector3.new(0, -5, 0)  -- 轻微下坠
+            elseif isUI then
+                scheme = FutureTechPalette.MatrixFlow
+                effect.Lifetime = NumberRange.new(0.3, 0.6)  -- 短暂存在
+                effect.Rate = (effect.Rate or 20) * 2        -- 高频率
+            elseif isEnergy then
+                scheme = FutureTechPalette.CircuitSpark
+                effect.LightEmission = 0.9
+                effect.Speed = NumberRange.new(5, 15)        -- 快速移动
+            elseif string.find(effectName, "data") or string.find(effectName, "code") then
+                scheme = FutureTechPalette.DataRain
+                -- 添加数字纹理（如果有）
+                if effect.Texture == "" then
+                    effect.Texture = "rbxassetid://241602659"  -- 数字纹理
+                end
+            else
+                -- 随机科技方案
+                local techSchemes = {
+                    FutureTechPalette.HologramPulse,
+                    FutureTechPalette.NanotechGlow,
+                    FutureTechPalette.CircuitSpark
+                }
+                scheme = techSchemes[math.random(1, #techSchemes)]
+            end
+            
+            effect.Color = scheme
+            
+            -- 增强科技感
+            effect.LightEmission = math.max(effect.LightEmission or 0.3, 0.7)
+            effect.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.1),
+                NumberSequenceKeypoint.new(0.5, 0.05),
+                NumberSequenceKeypoint.new(1, 0.9)
+            })
+            
+            -- 网格状大小变化
+            effect.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.8),
+                NumberSequenceKeypoint.new(0.25, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 1.2),
+                NumberSequenceKeypoint.new(0.5, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.8),
+                NumberSequenceKeypoint.new(0.75, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 1.2),
+                NumberSequenceKeypoint.new(1, (effect.Size and effect.Size.Keypoints[1].Value or 1) * 0.8)
+            })
+            
+            -- 添加科技感旋转
+            effect.Rotation = NumberRange.new(-180, 180)
+            effect.RotSpeed = NumberRange.new(-100, 100)
+            
+        elseif effect:IsA("Beam") then
+            -- 激光/能量束
+            effect.Color = FutureTechPalette.PhotonBeam
+            effect.Width0 = (effect.Width0 or 0.5) * 1.3
+            effect.Width1 = (effect.Width1 or 0.5) * 1.3
+            effect.Texture = "rbxassetid://446111271"  -- 闪电纹理
+            effect.TextureSpeed = 3
+            effect.LightEmission = 1
+            effect.TextureLength = 2
+            
+            -- 添加扫描效果
+            effect.CurveSize0 = 0
+            effect.CurveSize1 = 0
+            
+        elseif effect:IsA("Trail") then
+            effect.Color = FutureTechPalette.HologramPulse
+            effect.LightEmission = 0.8
+            effect.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.7, 0.1),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+            
+        elseif effect:IsA("Smoke") then
+            -- 科技烟雾（半透明数据流）
+            effect.Color = Color3.fromRGB(100, 200, 255)
+            effect.Opacity = 0.15  -- 更透明
+            effect.RiseVelocity = (effect.RiseVelocity or 1) * 0.5
+            effect.Size = (effect.Size or 4) * 1.5
+            
+        elseif effect:IsA("Fire") then
+            -- 能量火焰
+            effect.Color = FutureTechPalette.CircuitSpark
+            effect.Size = (effect.Size or 5) * 1.2
+            effect.Heat = (effect.Heat or 10) * 0.7
+            effect.SecondaryColor = FutureTechPalette.HologramBlue
+            
+        elseif effect:IsA("Sparkles") then
+            -- 数据流闪烁
+            effect.SparkleColor = FutureTechPalette.InterfaceCyan
+            effect.SparkleSize = (effect.SparkleSize or 1) * 2
+            effect.TimeScale = 2  -- 快速闪烁
+            
+        elseif effect:IsA("Explosion") then
+            effect.BlastPressure = (effect.BlastPressure or 500) * 0.9
+            effect.DestroyJointRadiusPercent = 0
+            -- 爆炸效果通过粒子实现
+        end
+        
+        -- 添加科技标记
+        effect:SetAttribute("FutureTech", true)
+        effect:SetAttribute("TechTier", isWeapon and "Weapon" or isEnergy and "Energy" or "General")
+        effect:SetAttribute("ScanLineSpeed", math.random(50, 150))
+        
+        -- 如果是光束，添加脉冲动画
+        if effect:IsA("Beam") then
+            spawn(function()
+                while effect.Parent do
+                    local tween = TweenService:Create(effect, TweenInfo.new(0.3), {
+                        Width0 = (effect.Width0 or 0.5) * 1.5,
+                        Width1 = (effect.Width1 or 0.5) * 1.5
+                    })
+                    tween:Play()
+                    tween.Completed:Wait()
+                    
+                    local tween2 = TweenService:Create(effect, TweenInfo.new(0.3), {
+                        Width0 = effect.Width0 / 1.5,
+                        Width1 = effect.Width1 / 1.5
+                    })
+                    tween2:Play()
+                    wait(0.5)
+                end
+            end)
+        end
+    end)
+end
+
+-- 🚀 应用所有科技特效
+local function applyAllFutureTech()
+    print("🌐 开始应用未来科技特效...")
+    local effectTypes = {"ParticleEmitter", "Beam", "Trail", "Smoke", "Fire", "Sparkles", "Explosion", "Light"}
+    local totalEffects = 0
+    local techEffects = 0
+    
+    for _, descendant in ipairs(game:GetDescendants()) do
+        for _, effectType in ipairs(effectTypes) do
+            if descendant:IsA(effectType) then
+                totalEffects = totalEffects + 1
+                if not descendant:GetAttribute("FutureTech") then
+                    enhanceTechEffect(descendant)
+                    techEffects = techEffects + 1
+                end
+            end
+        end
+    end
+    
+    print(string.format("🛸 未来科技应用完成！总计 %d 个特效，转化 %d 个科技效果", totalEffects, techEffects))
+    
+    -- 全局科技系统
+    _G.FutureTechSystem = {
+        Reapply = applyAllFutureTech,
+        ScanMode = function(enabled)
+            -- 开启扫描线效果
+            for _, effect in ipairs(game:GetDescendants()) do
+                if effect:GetAttribute("FutureTech") and effect:IsA("ParticleEmitter") then
+                    if enabled then
+                        effect.Transparency = NumberSequence.new({
+                            NumberSequenceKeypoint.new(0, 0.3),
+                            NumberSequenceKeypoint.new(0.5, 0),
+                            NumberSequenceKeypoint.new(1, 0.3)
+                        })
+                        effect.Acceleration = Vector3.new(0, 10, 0)  -- 向上扫描
+                    else
+                        effect.Transparency = NumberSequence.new({
+                            NumberSequenceKeypoint.new(0, 0.1),
+                            NumberSequenceKeypoint.new(0.5, 0.05),
+                            NumberSequenceKeypoint.new(1, 0.9)
+                        })
+                        effect.Acceleration = Vector3.new(0, 0, 0)
+                    end
+                end
+            end
+        end,
+        DataStream = function(speed)
+            -- 控制数据流速度
+            for _, effect in ipairs(game:GetDescendants()) do
+                if effect:GetAttribute("FutureTech") and effect:IsA("ParticleEmitter") then
+                    effect.Speed = NumberRange.new(
+                        (effect.Speed and effect.Speed.Min or 2) * (speed or 1),
+                        (effect.Speed and effect.Speed.Max or 5) * (speed or 1)
+                    )
+                end
+            end
+        end,
+        Overload = function()
+            -- 过载效果（所有特效变红）
+            for _, effect in ipairs(game:GetDescendants()) do
+                if effect:GetAttribute("FutureTech") then
+                    if effect:IsA("ParticleEmitter") then
+                        effect.Color = ColorSequence.new(Color3.fromRGB(255, 50, 50))
+                    elseif effect:IsA("Beam") then
+                        effect.Color = ColorSequence.new(Color3.fromRGB(255, 0, 0))
+                    end
+                end
+            end
+            wait(1)
+            applyAllFutureTech()  -- 恢复正常
+        end
+    }
+    
+    return techEffects
+end
+
+-- 📡 初始执行
+applyAllFutureTech()
+
+print("🌐 未来科技系统已激活")
+print("💾 全息蓝 + 矩阵绿 + 纳米银")
+print("⚡ 建议配合赛博朋克场景使用")
+
+-- 🔄 监听新特效
+game.DescendantAdded:Connect(function(newDescendant)
+    task.wait(0.08)
+    local effectTypes = {"ParticleEmitter", "Beam", "Trail", "Smoke", "Fire", "Sparkles", "Explosion", "Light"}
+    for _, effectType in ipairs(effectTypes) do
+        if newDescendant:IsA(effectType) then
+            task.wait(0.12)
+            if not newDescendant:GetAttribute("FutureTech") then
+                enhanceTechEffect(newDescendant)
+                print("📊 新增科技效果:", newDescendant:GetFullName())
+            end
+        end
+    end
+end)
+
+-- 🏙️ 未来环境光设置
+local function setupFutureEnvironment()
+    if game:GetService("Lighting") then
+        local lighting = game:GetService("Lighting")
+        
+        -- 赛博朋克风格灯光
+        lighting.Ambient = Color3.fromRGB(20, 30, 50)
+        lighting.OutdoorAmbient = Color3.fromRGB(30, 40, 60)
+        lighting.Brightness = 1.5
+        lighting.ColorShift_Bottom = Color3.fromRGB(0, 100, 200)
+        lighting.ColorShift_Top = Color3.fromRGB(100, 0, 200)
+        
+        -- 添加雾效
+        lighting.FogColor = Color3.fromRGB(10, 20, 40)
+        lighting.FogStart = 50
+        lighting.FogEnd = 300
+        
+        -- 添加Bloom后处理
+        if lighting:FindFirstChild("BloomEffect") then
+            lighting.BloomEffect.Enabled = true
+            lighting.BloomEffect.Intensity = 0.5
+            lighting.BloomEffect.Size = 24
+            lighting.BloomEffect.Threshold = 0.9
+        end
+    end
+end
+
+-- ⚙️ 科技特效控制
+function TechPulse(pulseRate)
+    pulseRate = pulseRate or 0.5
+    for _, effect in ipairs(game:GetDescendants()) do
+        if effect:GetAttribute("FutureTech") then
+            if effect:IsA("ParticleEmitter") then
+                -- 同步脉冲效果
+                local tween = TweenService:Create(effect, TweenInfo.new(pulseRate/2), {
+                    Rate = (effect.Rate or 20) * 2
+                })
+                tween:Play()
+                tween.Completed:Wait()
+                
+                local tween2 = TweenService:Create(effect, TweenInfo.new(pulseRate/2), {
+                    Rate = effect.Rate / 2
+                })
+                tween2:Play()
+            end
+        end
+    end
+    print("⚙️ 科技脉冲频率:", pulseRate)
+end
+
+-- 全局扫描线效果
+function ActivateScanLines()
+    for _, part in ipairs(workspace:GetDescendants()) do
+        if part:IsA("BasePart") and not part:GetAttribute("HasScanLine") then
+            local attachment = Instance.new("Attachment", part)
+            local beam = Instance.new("Beam")
+            beam.Attachment0 = attachment
+            beam.Attachment1 = attachment
+            beam.Color = FutureTechPalette.MatrixFlow
+            beam.Width0 = 0.1
+            beam.Width1 = 0.1
+            beam.Parent = part
+            beam.LightEmission = 1
+            beam.Texture = "rbxassetid://446111271"
+            beam.TextureSpeed = 10
+            
+            part:SetAttribute("HasScanLine", true)
+            part:SetAttribute("ScanBeam", beam)
+        end
+    end
+    print("📡 全局扫描线已激活")
+end
+
+-- 导出模块
+return {
+    Apply = applyAllFutureTech,
+    Pulse = TechPulse,
+    ScanLines = ActivateScanLines,
+    Environment = setupFutureEnvironment,
+    Overload = _G.FutureTechSystem and _G.FutureTechSystem.Overload,
+    Colors = FutureTechPalette
+}
